@@ -12,6 +12,8 @@ $env:SAMPLE_AND_DIAGNOSIS_API_ENVIRONMENT="Development"
 $env:SAMPLE_AND_DIAGNOSIS_API_PORT="8080"
 $env:SAMPLE_AND_DIAGNOSIS_API_MONGODB_USERNAME="root"
 $env:SAMPLE_AND_DIAGNOSIS_API_MONGODB_PASSWORD="neUhaDnes"
+$env:SAMPLE_AND_DIAGNOSIS_API_MONGODB_DATABASE="mglm-sample-and-diagnosis-test"
+$env:SAMPLE_AND_DIAGNOSIS_API_MONGODB_COLLECTION="sample-and-diagnosis"
 
 function mongo {
     docker compose --file ${ProjectRoot}/deployments/docker-compose/compose.yaml $args
@@ -21,7 +23,7 @@ switch ($command) {
     "start" {
         try {
             mongo up --detach
-        go run ${ProjectRoot}/cmd/sample-and-diagnosis-api-service
+            go run ${ProjectRoot}/cmd/sample-and-diagnosis-api-service
         } finally {
             mongo down
         }

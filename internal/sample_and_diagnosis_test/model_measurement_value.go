@@ -25,7 +25,7 @@ type MeasurementValue struct {
 
 	Unit string `json:"unit,omitempty"`
 
-	MeasuredAt time.Time `json:"measuredAt,omitempty"`
+	MeasuredAt *time.Time `json:"measuredAt,omitempty"`
 
 	EnteredByRole string `json:"enteredByRole,omitempty"`
 }

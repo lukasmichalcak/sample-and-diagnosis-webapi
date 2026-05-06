@@ -32,7 +32,7 @@ type Sample struct {
 
 	Measurements []MeasurementValue `json:"measurements"`
 
-	Report DiagnosticReport `json:"report,omitempty"`
+	Report *DiagnosticReport `json:"report,omitempty"`
 
 	CreatedAt time.Time `json:"createdAt"`
 

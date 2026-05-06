@@ -478,7 +478,9 @@ components:
           items:
             $ref: "#/components/schemas/MeasurementValue"
         report:
-          $ref: "#/components/schemas/DiagnosticReport"
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/DiagnosticReport"
         createdAt:
           type: string
           format: date-time
@@ -572,6 +574,7 @@ components:
         measuredAt:
           type: string
           format: date-time
+          nullable: true
         enteredByRole:
           type: string
           enum:
@@ -646,6 +649,7 @@ components:
         finalizedAt:
           type: string
           format: date-time
+          nullable: true
         author:
           type: string
           example: Diagnostician

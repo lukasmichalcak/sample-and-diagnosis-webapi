@@ -32,7 +32,7 @@ type DiagnosticReport struct {
 
 	UpdatedAt time.Time `json:"updatedAt"`
 
-	FinalizedAt time.Time `json:"finalizedAt,omitempty"`
+	FinalizedAt *time.Time `json:"finalizedAt,omitempty"`
 
 	Author string `json:"author,omitempty"`
 
