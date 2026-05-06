@@ -1,0 +1,8 @@
+generatorName: go-gin-server
+outputDir: /local
+inputSpec: /local/api/sample-and-diagnosis-test.openapi.yaml
+enablePostProcessFile: true
+additionalProperties:
+  apiPath: internal/sample_and_diagnosis_test
+  packageName: sample_and_diagnosis_test
+  interfaceOnly: true

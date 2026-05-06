@@ -7,6 +7,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/lukasmichalcak/sample-and-diagnosis-webapi/api"
+	"github.com/lukasmichalcak/sample-and-diagnosis-webapi/internal/sample_and_diagnosis_test"
 )
 
 func main() {
@@ -22,6 +23,14 @@ func main() {
     engine := gin.New()
     engine.Use(gin.Recovery())
     // request routings
+    handleFunctions := &sample_and_diagnosis_test.ApiHandleFunctions{
+        PatientReportsAPI:  sample_and_diagnosis_test.NewPatientReportsAPI(),
+        SampleMeasurementsAPI:  sample_and_diagnosis_test.NewSampleMeasurementsAPI(),
+        SampleReportsAPI:  sample_and_diagnosis_test.NewSampleReportsAPI(),
+        SamplesAPI:  sample_and_diagnosis_test.NewSamplesAPI(),
+        TestTypesAPI:  sample_and_diagnosis_test.NewTestTypesAPI(),
+    }
+    sample_and_diagnosis_test.NewRouterWithGinEngine(engine, *handleFunctions)
     engine.GET("/openapi", api.HandleOpenApi)
     engine.Run(":" + port)
 }
