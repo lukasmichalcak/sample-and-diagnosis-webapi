@@ -1,0 +1,792 @@
+openapi: 3.0.0
+servers:
+  - description: Cluster Endpoint
+    url: /api
+info:
+  title: Sample And Diagnosis API
+  version: "1.0.0"
+  description: Sample collection, measurement, diagnostics, and patient documentation API.
+  contact:
+    email: your_email@stuba.sk
+  license:
+    name: CC BY 4.0
+    url: "https://creativecommons.org/licenses/by/4.0/"
+tags:
+  - name: testTypes
+    description: Supported laboratory test definitions and expected measurement schemas.
+  - name: samples
+    description: Laboratory sample lifecycle operations.
+  - name: sampleMeasurements
+    description: Measurement values attached to a sample.
+  - name: sampleReports
+    description: Preliminary and finalized diagnostic reports for a sample.
+  - name: patientReports
+    description: Finalized report history grouped by patient identifier.
+paths:
+  /test-types:
+    get:
+      tags:
+        - testTypes
+      summary: Provides supported test types
+      operationId: getTestTypes
+      responses:
+        "200":
+          description: Supported test types.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/TestType"
+              examples:
+                response:
+                  $ref: "#/components/examples/TestTypesExample"
+
+  /samples:
+    get:
+      tags:
+        - samples
+      summary: Provides samples
+      operationId: getSamples
+      parameters:
+        - in: query
+          name: status
+          description: Optional comma-separated status filter.
+          required: false
+          schema:
+            type: array
+            items:
+              $ref: "#/components/schemas/SampleStatus"
+          style: form
+          explode: false
+        - in: query
+          name: patientId
+          description: Optional patient identifier filter.
+          required: false
+          schema:
+            type: string
+        - in: query
+          name: sampleCode
+          description: Optional visible sample code filter.
+          required: false
+          schema:
+            type: string
+        - in: query
+          name: testType
+          description: Optional test type code filter.
+          required: false
+          schema:
+            type: string
+        - in: query
+          name: includeTainted
+          description: Includes tainted samples when true.
+          required: false
+          schema:
+            type: boolean
+            default: false
+      responses:
+        "200":
+          description: Matching samples.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Sample"
+              examples:
+                response:
+                  $ref: "#/components/examples/SamplesExample"
+    post:
+      tags:
+        - samples
+      summary: Creates a technician sample draft
+      operationId: createSample
+      requestBody:
+        description: Sample draft metadata and selected test types.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NewSample"
+            examples:
+              request:
+                $ref: "#/components/examples/NewSampleExample"
+      responses:
+        "201":
+          description: Created sample draft.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Sample"
+              examples:
+                response:
+                  $ref: "#/components/examples/SampleDraftExample"
+        "400":
+          description: Missing mandatory properties or invalid test type.
+        "409":
+          description: Sample code already exists.
+
+  /samples/{sampleId}:
+    parameters:
+      - $ref: "#/components/parameters/SampleId"
+    get:
+      tags:
+        - samples
+      summary: Provides sample detail
+      operationId: getSample
+      responses:
+        "200":
+          description: Sample detail.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Sample"
+              examples:
+                response:
+                  $ref: "#/components/examples/SampleCollectedExample"
+        "404":
+          description: Sample does not exist.
+    put:
+      tags:
+        - samples
+      summary: Updates a technician draft sample
+      operationId: updateSample
+      description: Updates sample metadata before it is published to diagnostics.
+      requestBody:
+        description: Replacement sample metadata.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NewSample"
+            examples:
+              request:
+                $ref: "#/components/examples/NewSampleExample"
+      responses:
+        "200":
+          description: Updated sample.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Sample"
+        "400":
+          description: Invalid input.
+        "404":
+          description: Sample does not exist.
+        "409":
+          description: Sample is no longer editable by the technician or sample code is duplicated.
+    delete:
+      tags:
+        - samples
+      summary: Deletes a non-finalized sample
+      operationId: deleteSample
+      description: Finalized samples are retained as patient documentation and cannot be deleted.
+      responses:
+        "204":
+          description: Sample deleted.
+        "404":
+          description: Sample does not exist.
+        "409":
+          description: Finalized sample cannot be deleted.
+
+  /samples/{sampleId}/status:
+    parameters:
+      - $ref: "#/components/parameters/SampleId"
+    patch:
+      tags:
+        - samples
+      summary: Updates sample status
+      operationId: updateSampleStatus
+      requestBody:
+        description: Requested status transition.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SampleStatusUpdate"
+            examples:
+              publish:
+                value:
+                  status: collected
+              tainted:
+                value:
+                  status: tainted
+      responses:
+        "200":
+          description: Sample with updated status.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Sample"
+        "400":
+          description: Invalid status transition.
+        "404":
+          description: Sample does not exist.
+        "409":
+          description: Requested transition conflicts with finalized documentation.
+
+  /samples/{sampleId}/measurements:
+    parameters:
+      - $ref: "#/components/parameters/SampleId"
+    put:
+      tags:
+        - sampleMeasurements
+      summary: Saves measured values for a sample
+      operationId: saveSampleMeasurements
+      requestBody:
+        description: Measurement values matching the selected test type schemas.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MeasurementValuesUpdate"
+            examples:
+              request:
+                value:
+                  measurements:
+                    - testTypeCode: crp
+                      code: crp_value
+                      value: "18"
+                      unit: mg/L
+      responses:
+        "200":
+          description: Sample with saved measurements.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Sample"
+        "400":
+          description: Missing required measured values or invalid measurement code.
+        "404":
+          description: Sample does not exist.
+        "409":
+          description: Measurements cannot be changed for finalized documentation.
+
+  /samples/{sampleId}/report:
+    parameters:
+      - $ref: "#/components/parameters/SampleId"
+    put:
+      tags:
+        - sampleReports
+      summary: Saves a preliminary diagnostic report
+      operationId: saveSampleReport
+      requestBody:
+        description: Preliminary report content.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReportDraft"
+            examples:
+              request:
+                $ref: "#/components/examples/ReportDraftExample"
+      responses:
+        "200":
+          description: Sample with preliminary report.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Sample"
+        "400":
+          description: Summary or conclusion is missing.
+        "404":
+          description: Sample does not exist.
+        "409":
+          description: Report cannot be changed for finalized documentation.
+    delete:
+      tags:
+        - sampleReports
+      summary: Discards a preliminary diagnostic report
+      operationId: deleteSampleReport
+      responses:
+        "200":
+          description: Sample after preliminary report removal.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Sample"
+        "404":
+          description: Sample or preliminary report does not exist.
+        "409":
+          description: Finalized report cannot be discarded.
+
+  /samples/{sampleId}/report/finalize:
+    parameters:
+      - $ref: "#/components/parameters/SampleId"
+    post:
+      tags:
+        - sampleReports
+      summary: Finalizes the diagnostic report
+      operationId: finalizeSampleReport
+      responses:
+        "200":
+          description: Sample with finalized report.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Sample"
+        "400":
+          description: Required measurements or preliminary report content are missing.
+        "404":
+          description: Sample does not exist.
+        "409":
+          description: Report is already finalized or the sample is not ready for finalization.
+
+  /patients/{patientId}/reports:
+    parameters:
+      - in: path
+        name: patientId
+        description: Patient identifier used for finalized report lookup.
+        required: true
+        schema:
+          type: string
+    get:
+      tags:
+        - patientReports
+      summary: Provides finalized reports for a patient
+      operationId: getPatientReports
+      parameters:
+        - in: query
+          name: testType
+          description: Optional test type code filter.
+          required: false
+          schema:
+            type: string
+        - in: query
+          name: limit
+          description: Maximum number of finalized reports to return.
+          required: false
+          schema:
+            type: integer
+            format: int32
+            minimum: 1
+      responses:
+        "200":
+          description: Finalized report samples for the patient.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Sample"
+              examples:
+                response:
+                  value:
+                    - $ref: "#/components/examples/SampleFinalizedExample/value"
+        "404":
+          description: Patient documentation does not exist.
+
+components:
+  parameters:
+    SampleId:
+      in: path
+      name: sampleId
+      description: System identifier of the sample.
+      required: true
+      schema:
+        type: string
+
+  schemas:
+    SampleStatus:
+      type: string
+      enum:
+        - draft
+        - collected
+        - in_diagnostics
+        - report_draft
+        - finalized
+        - tainted
+
+    MeasurementValueType:
+      type: string
+      enum:
+        - number
+        - text
+        - boolean
+        - select
+
+    NewSample:
+      type: object
+      required:
+        - patientName
+        - sampleCode
+        - collectedAt
+        - testTypes
+      properties:
+        patientName:
+          type: string
+          minLength: 1
+          example: Eva Novakova
+        patientId:
+          type: string
+          example: P-1002
+        sampleCode:
+          type: string
+          minLength: 1
+          example: SMP-20260506-C3D4
+        collectedAt:
+          type: string
+          format: date-time
+          example: "2026-05-06T09:05:00Z"
+        testTypes:
+          type: array
+          minItems: 1
+          items:
+            type: string
+          example:
+            - glucose
+
+    Sample:
+      type: object
+      required:
+        - id
+        - patientName
+        - sampleCode
+        - collectedAt
+        - testTypes
+        - status
+        - measurements
+        - createdAt
+        - updatedAt
+      properties:
+        id:
+          type: string
+          example: sample-002
+        patientName:
+          type: string
+          example: Eva Novakova
+        patientId:
+          type: string
+          example: P-1002
+        sampleCode:
+          type: string
+          example: SMP-20260506-C3D4
+        collectedAt:
+          type: string
+          format: date-time
+          example: "2026-05-06T09:05:00Z"
+        testTypes:
+          type: array
+          items:
+            type: string
+          example:
+            - glucose
+        status:
+          $ref: "#/components/schemas/SampleStatus"
+        measurements:
+          type: array
+          items:
+            $ref: "#/components/schemas/MeasurementValue"
+        report:
+          $ref: "#/components/schemas/DiagnosticReport"
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        createdBy:
+          type: string
+          example: Lab technician
+        finalizedBy:
+          type: string
+          example: Diagnostician
+
+    TestType:
+      type: object
+      required:
+        - code
+        - name
+        - measurementSchema
+      properties:
+        code:
+          type: string
+          example: crp
+        name:
+          type: string
+          example: CRP
+        description:
+          type: string
+          example: C-reactive protein inflammation marker.
+        measurementSchema:
+          type: array
+          items:
+            $ref: "#/components/schemas/MeasurementDefinition"
+
+    MeasurementDefinition:
+      type: object
+      required:
+        - code
+        - label
+        - valueType
+      properties:
+        code:
+          type: string
+          example: crp_value
+        label:
+          type: string
+          example: CRP
+        valueType:
+          $ref: "#/components/schemas/MeasurementValueType"
+        unit:
+          type: string
+          example: mg/L
+        min:
+          type: number
+          example: 0
+        max:
+          type: number
+          example: 30
+        options:
+          type: array
+          items:
+            type: string
+          example:
+            - negative
+            - positive
+            - inconclusive
+        required:
+          type: boolean
+          default: false
+
+    MeasurementValue:
+      type: object
+      required:
+        - testTypeCode
+        - code
+        - value
+      properties:
+        testTypeCode:
+          type: string
+          example: glucose
+        code:
+          type: string
+          example: glucose_value
+        value:
+          type: string
+          description: Serialized measurement value. Interpret the value according to the referenced MeasurementDefinition.valueType.
+          example: "6.1"
+        unit:
+          type: string
+          example: mmol/L
+        measuredAt:
+          type: string
+          format: date-time
+        enteredByRole:
+          type: string
+          enum:
+            - technician
+            - diagnostician
+
+    MeasurementValuesUpdate:
+      type: object
+      required:
+        - measurements
+      properties:
+        measurements:
+          type: array
+          items:
+            $ref: "#/components/schemas/MeasurementValue"
+
+    ReportDraft:
+      type: object
+      required:
+        - summary
+        - conclusion
+      properties:
+        summary:
+          type: string
+          minLength: 1
+          example: Glucose level is mildly elevated.
+        conclusion:
+          type: string
+          minLength: 1
+          example: Borderline fasting glucose result.
+        recommendations:
+          type: string
+          example: Repeat fasting glucose check during follow-up.
+
+    DiagnosticReport:
+      type: object
+      required:
+        - id
+        - sampleId
+        - summary
+        - conclusion
+        - createdAt
+        - updatedAt
+        - status
+      properties:
+        id:
+          type: string
+          example: report-002
+        sampleId:
+          type: string
+          example: sample-002
+        patientId:
+          type: string
+          example: P-1002
+        summary:
+          type: string
+          minLength: 1
+          example: Glucose level is mildly elevated.
+        conclusion:
+          type: string
+          minLength: 1
+          example: Borderline fasting glucose result.
+        recommendations:
+          type: string
+          example: Repeat fasting glucose check during follow-up.
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        finalizedAt:
+          type: string
+          format: date-time
+        author:
+          type: string
+          example: Diagnostician
+        status:
+          type: string
+          enum:
+            - draft
+            - finalized
+
+    SampleStatusUpdate:
+      type: object
+      required:
+        - status
+      properties:
+        status:
+          $ref: "#/components/schemas/SampleStatus"
+
+  examples:
+    TestTypesExample:
+      summary: Supported test types
+      value:
+        - code: crp
+          name: CRP
+          description: C-reactive protein inflammation marker.
+          measurementSchema:
+            - code: crp_value
+              label: CRP
+              valueType: number
+              unit: mg/L
+              min: 0
+              required: true
+        - code: covid_antigen
+          name: COVID antigen
+          measurementSchema:
+            - code: result
+              label: Result
+              valueType: select
+              options:
+                - negative
+                - positive
+                - inconclusive
+              required: true
+
+    NewSampleExample:
+      summary: New technician sample draft
+      value:
+        patientName: Eva Novakova
+        patientId: P-1002
+        sampleCode: SMP-20260506-C3D4
+        collectedAt: "2026-05-06T09:05:00Z"
+        testTypes:
+          - glucose
+
+    SampleDraftExample:
+      summary: Technician draft sample
+      value:
+        id: sample-006
+        patientName: Eva Novakova
+        patientId: P-1002
+        sampleCode: SMP-20260506-C3D4
+        collectedAt: "2026-05-06T09:05:00Z"
+        testTypes:
+          - glucose
+        status: draft
+        measurements:
+          - testTypeCode: glucose
+            code: glucose_value
+            value: ""
+            unit: mmol/L
+          - testTypeCode: glucose
+            code: fasting
+            value: "false"
+        createdAt: "2026-05-06T09:06:00Z"
+        updatedAt: "2026-05-06T09:06:00Z"
+        createdBy: Lab technician
+
+    SampleCollectedExample:
+      summary: Collected sample
+      value:
+        id: sample-001
+        patientName: Juraj Prvy
+        patientId: P-1001
+        sampleCode: SMP-20260506-A1B2
+        collectedAt: "2026-05-06T08:20:00Z"
+        testTypes:
+          - crp
+          - blood_count
+        status: collected
+        measurements:
+          - testTypeCode: crp
+            code: crp_value
+            value: ""
+            unit: mg/L
+        createdAt: "2026-05-06T08:25:00Z"
+        updatedAt: "2026-05-06T08:25:00Z"
+        createdBy: Lab technician
+
+    SampleFinalizedExample:
+      summary: Finalized sample report
+      value:
+        id: sample-004
+        patientName: Eva Novakova
+        patientId: P-1002
+        sampleCode: SMP-20260428-G7H8
+        collectedAt: "2026-04-28T10:10:00Z"
+        testTypes:
+          - glucose
+        status: finalized
+        measurements:
+          - testTypeCode: glucose
+            code: glucose_value
+            value: "5.4"
+            unit: mmol/L
+          - testTypeCode: glucose
+            code: fasting
+            value: "true"
+        report:
+          id: report-004
+          sampleId: sample-004
+          patientId: P-1002
+          summary: Glucose level within expected fasting range.
+          conclusion: No diagnostic escalation required.
+          createdAt: "2026-04-28T10:20:00Z"
+          updatedAt: "2026-04-28T10:30:00Z"
+          finalizedAt: "2026-04-28T10:30:00Z"
+          author: Diagnostician
+          status: finalized
+        createdAt: "2026-04-28T10:12:00Z"
+        updatedAt: "2026-04-28T10:30:00Z"
+        createdBy: Lab technician
+        finalizedBy: Diagnostician
+
+    SamplesExample:
+      summary: Sample queue
+      value:
+        - $ref: "#/components/examples/SampleCollectedExample/value"
+        - $ref: "#/components/examples/SampleFinalizedExample/value"
+
+    ReportDraftExample:
+      summary: Preliminary diagnostic report
+      value:
+        summary: Glucose level is mildly elevated.
+        conclusion: Borderline fasting glucose result.
+        recommendations: Repeat fasting glucose check during follow-up.
