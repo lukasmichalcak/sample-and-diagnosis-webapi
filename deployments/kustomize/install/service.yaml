@@ -1,0 +1,12 @@
+kind: Service
+apiVersion: v1
+metadata:
+  name: mglm-sample-and-diagnosis-webapi
+spec:
+  selector:
+    pod: mglm-sample-and-diagnosis-webapi-label
+  ports:
+    - name: http
+      protocol: TCP
+      port: 80
+      targetPort: webapi-port

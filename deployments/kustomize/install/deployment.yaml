@@ -1,0 +1,117 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mglm-sample-and-diagnosis-webapi
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      pod: mglm-sample-and-diagnosis-webapi-label
+  template:
+    metadata:
+      labels:
+        pod: mglm-sample-and-diagnosis-webapi-label
+    spec:
+      volumes:
+        - name: init-scripts
+          configMap:
+            name: mglm-sample-and-diagnosis-webapi-mongodb-init
+      initContainers:
+        - name: init-mongodb
+          image: mongo:8.2.6
+          imagePullPolicy: Always
+          command: ["mongosh", "--nodb", "-f", "/scripts/init-db.js"]
+          volumeMounts:
+            - name: init-scripts
+              mountPath: /scripts
+          env:
+            - name: SAMPLE_AND_DIAGNOSIS_API_MONGODB_HOST
+              value: mongodb
+            - name: SAMPLE_AND_DIAGNOSIS_API_MONGODB_PORT
+              value: "27017"
+            - name: SAMPLE_AND_DIAGNOSIS_API_MONGODB_USERNAME
+              value: ""
+            - name: SAMPLE_AND_DIAGNOSIS_API_MONGODB_PASSWORD
+              value: ""
+            - name: SAMPLE_AND_DIAGNOSIS_API_MONGODB_DATABASE
+              valueFrom:
+                configMapKeyRef:
+                  name: mglm-sample-and-diagnosis-webapi-config
+                  key: database
+            - name: SAMPLE_AND_DIAGNOSIS_API_MONGODB_COLLECTION
+              valueFrom:
+                configMapKeyRef:
+                  name: mglm-sample-and-diagnosis-webapi-config
+                  key: collection
+            - name: RETRY_CONNECTION_SECONDS
+              value: "5"
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "0.01"
+            limits:
+              memory: "256Mi"
+              cpu: "0.1"
+      containers:
+        - name: mglm-sample-and-diagnosis-webapi-container
+          image: lukasmichalcak/sample-and-diagnosis-webapi:latest
+          imagePullPolicy: Always
+          ports:
+            - name: webapi-port
+              containerPort: 8080
+          env:
+            - name: SAMPLE_AND_DIAGNOSIS_API_ENVIRONMENT
+              value: production
+            - name: SAMPLE_AND_DIAGNOSIS_API_PORT
+              value: "8080"
+            - name: SAMPLE_AND_DIAGNOSIS_API_MONGODB_HOST
+              value: mongodb
+            - name: SAMPLE_AND_DIAGNOSIS_API_MONGODB_PORT
+              value: "27017"
+            - name: SAMPLE_AND_DIAGNOSIS_API_MONGODB_USERNAME
+              value: ""
+            - name: SAMPLE_AND_DIAGNOSIS_API_MONGODB_PASSWORD
+              value: ""
+            - name: SAMPLE_AND_DIAGNOSIS_API_MONGODB_DATABASE
+              valueFrom:
+                configMapKeyRef:
+                  name: mglm-sample-and-diagnosis-webapi-config
+                  key: database
+            - name: SAMPLE_AND_DIAGNOSIS_API_MONGODB_COLLECTION
+              valueFrom:
+                configMapKeyRef:
+                  name: mglm-sample-and-diagnosis-webapi-config
+                  key: collection
+            - name: SAMPLE_AND_DIAGNOSIS_API_MONGODB_TIMEOUT_SECONDS
+              value: "5"
+          resources:
+            requests:
+              memory: "64Mi"
+              cpu: "0.01"
+            limits:
+              memory: "512Mi"
+              cpu: "0.3"
+        - name: openapi-ui
+          image: swaggerapi/swagger-ui
+          imagePullPolicy: Always
+          ports:
+            - name: api-ui
+              containerPort: 8081
+          env:
+            - name: PORT
+              value: "8081"
+            - name: URL
+              value: /openapi
+            - name: BASE_URL
+              value: /openapi-ui
+            - name: FILTER
+              value: "true"
+            - name: DISPLAY_OPERATION_ID
+              value: "true"
+          resources:
+            requests:
+              memory: "16Mi"
+              cpu: "0.01"
+            limits:
+              memory: "64Mi"
+              cpu: "0.1"

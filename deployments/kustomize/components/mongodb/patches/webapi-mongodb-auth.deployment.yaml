@@ -1,0 +1,61 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mglm-sample-and-diagnosis-webapi
+spec:
+  template:
+    spec:
+      initContainers:
+        - name: init-mongodb
+          env:
+            - name: SAMPLE_AND_DIAGNOSIS_API_MONGODB_HOST
+              value: null
+              valueFrom:
+                configMapKeyRef:
+                  name: mongodb-connection
+                  key: host
+            - name: SAMPLE_AND_DIAGNOSIS_API_MONGODB_PORT
+              value: null
+              valueFrom:
+                configMapKeyRef:
+                  name: mongodb-connection
+                  key: port
+            - name: SAMPLE_AND_DIAGNOSIS_API_MONGODB_USERNAME
+              value: null
+              valueFrom:
+                secretKeyRef:
+                  name: mongodb-auth
+                  key: username
+            - name: SAMPLE_AND_DIAGNOSIS_API_MONGODB_PASSWORD
+              value: null
+              valueFrom:
+                secretKeyRef:
+                  name: mongodb-auth
+                  key: password
+      containers:
+        - name: mglm-sample-and-diagnosis-webapi-container
+          env:
+            - name: SAMPLE_AND_DIAGNOSIS_API_MONGODB_HOST
+              value: null
+              valueFrom:
+                configMapKeyRef:
+                  name: mongodb-connection
+                  key: host
+            - name: SAMPLE_AND_DIAGNOSIS_API_MONGODB_PORT
+              value: null
+              valueFrom:
+                configMapKeyRef:
+                  name: mongodb-connection
+                  key: port
+            - name: SAMPLE_AND_DIAGNOSIS_API_MONGODB_USERNAME
+              value: null
+              valueFrom:
+                secretKeyRef:
+                  name: mongodb-auth
+                  key: username
+            - name: SAMPLE_AND_DIAGNOSIS_API_MONGODB_PASSWORD
+              value: null
+              valueFrom:
+                secretKeyRef:
+                  name: mongodb-auth
+                  key: password
