@@ -1,0 +1,5 @@
+internal/sample_and_diagnosis_test/api_*
+internal/sample_and_diagnosis_test/model_*
+internal/sample_and_diagnosis_test/routers.go
+build/
+deployments/
