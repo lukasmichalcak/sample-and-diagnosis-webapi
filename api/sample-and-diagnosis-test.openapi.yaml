@@ -409,6 +409,7 @@ components:
       type: object
       required:
         - patientName
+        - patientId
         - sampleCode
         - collectedAt
         - testTypes
@@ -419,6 +420,7 @@ components:
           example: Eva Novakova
         patientId:
           type: string
+          minLength: 1
           example: P-1002
         sampleCode:
           type: string

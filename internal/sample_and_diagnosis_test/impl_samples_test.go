@@ -183,6 +183,29 @@ func (suite *SampleAndDiagnosisSuite) Test_CreateSample_DbServiceCreateCalled() 
 	suite.dbServiceMock.AssertCalled(suite.T(), "CreateDocument", mock.Anything, mock.Anything, mock.Anything)
 }
 
+func (suite *SampleAndDiagnosisSuite) Test_CreateSample_RequiresPatientIdentifier() {
+	// ARRANGE
+	ctx, recorder := suite.testContext(
+		http.MethodPost,
+		"/samples",
+		`{
+			"patientName": "Eva Novakova",
+			"sampleCode": "SMP-TEST-001",
+			"collectedAt": "2026-05-07T09:05:00Z",
+			"testTypes": ["glucose"]
+		}`,
+	)
+	sut := implSamplesAPI{}
+
+	// ACT
+	sut.CreateSample(ctx)
+
+	// ASSERT
+	suite.Equal(http.StatusBadRequest, recorder.Code)
+	suite.Contains(recorder.Body.String(), "Patient identifier is required")
+	suite.dbServiceMock.AssertNotCalled(suite.T(), "CreateDocument", mock.Anything, mock.Anything, mock.Anything)
+}
+
 func (suite *SampleAndDiagnosisSuite) testContext(method string, target string, body string, params ...gin.Param) (*gin.Context, *httptest.ResponseRecorder) {
 	recorder := httptest.NewRecorder()
 	ctx, _ := gin.CreateTestContext(recorder)

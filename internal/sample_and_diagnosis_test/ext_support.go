@@ -175,6 +175,9 @@ func validateNewSample(input NewSample) string {
 	if strings.TrimSpace(input.PatientName) == "" {
 		return "Patient name is required"
 	}
+	if strings.TrimSpace(input.PatientId) == "" {
+		return "Patient identifier is required"
+	}
 	if strings.TrimSpace(input.SampleCode) == "" {
 		return "Sample code is required"
 	}
