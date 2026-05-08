@@ -41,6 +41,11 @@ func (o implSamplesAPI) CreateSample(c *gin.Context) {
 		errorResponse(c, http.StatusConflict, "Conflict", "Sample code already exists", "sample code already exists")
 		return
 	}
+	if conflictingPatientName, exists := patientIdentifierNameConflict(samples, input.PatientId, input.PatientName, ""); exists {
+		message := "Patient identifier already belongs to " + conflictingPatientName
+		errorResponse(c, http.StatusConflict, "Conflict", message, "patient identifier already belongs to another patient name")
+		return
+	}
 
 	now := time.Now().UTC()
 	sample := Sample{
@@ -165,6 +170,10 @@ func (o implSamplesAPI) UpdateSample(c *gin.Context) {
 
 		if sampleCodeExists(samples, input.SampleCode, sample.Id) {
 			return nil, gin.H{"status": "Conflict", "message": "Sample code already exists", "error": "sample code already exists"}, http.StatusConflict
+		}
+		if conflictingPatientName, exists := patientIdentifierNameConflict(samples, input.PatientId, input.PatientName, sample.Id); exists {
+			message := "Patient identifier already belongs to " + conflictingPatientName
+			return nil, gin.H{"status": "Conflict", "message": message, "error": "patient identifier already belongs to another patient name"}, http.StatusConflict
 		}
 
 		sample.PatientName = strings.TrimSpace(input.PatientName)

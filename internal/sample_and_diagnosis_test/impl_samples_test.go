@@ -206,6 +206,85 @@ func (suite *SampleAndDiagnosisSuite) Test_CreateSample_RequiresPatientIdentifie
 	suite.dbServiceMock.AssertNotCalled(suite.T(), "CreateDocument", mock.Anything, mock.Anything, mock.Anything)
 }
 
+func (suite *SampleAndDiagnosisSuite) Test_CreateSample_RejectsPatientIdentifierNameMismatch() {
+	// ARRANGE
+	suite.dbServiceMock.ExpectedCalls = nil
+	suite.dbServiceMock.
+		On("FindDocuments", mock.Anything, mock.Anything).
+		Return([]Sample{{
+			Id:          "existing-sample",
+			PatientName: "Eva Novakova",
+			PatientId:   "P-1002",
+			SampleCode:  "SMP-EXISTING-001",
+			Status:      DRAFT,
+		}}, nil)
+
+	ctx, recorder := suite.testContext(
+		http.MethodPost,
+		"/samples",
+		`{
+			"patientName": "Juraj Prvy",
+			"patientId": "P-1002",
+			"sampleCode": "SMP-TEST-002",
+			"collectedAt": "2026-05-07T09:05:00Z",
+			"testTypes": ["glucose"]
+		}`,
+	)
+	sut := implSamplesAPI{}
+
+	// ACT
+	sut.CreateSample(ctx)
+
+	// ASSERT
+	suite.Equal(http.StatusConflict, recorder.Code)
+	suite.Contains(recorder.Body.String(), "Patient identifier already belongs to Eva Novakova")
+	suite.dbServiceMock.AssertNotCalled(suite.T(), "CreateDocument", mock.Anything, mock.Anything, mock.Anything)
+}
+
+func (suite *SampleAndDiagnosisSuite) Test_UpdateSample_RejectsPatientIdentifierNameMismatch() {
+	// ARRANGE
+	draft := testCollectedSample()
+	draft.Status = DRAFT
+	suite.dbServiceMock.ExpectedCalls = nil
+	suite.dbServiceMock.
+		On("FindDocuments", mock.Anything, mock.Anything).
+		Return([]Sample{
+			{
+				Id:          "existing-sample",
+				PatientName: "Eva Novakova",
+				PatientId:   "P-1002",
+				SampleCode:  "SMP-EXISTING-001",
+				Status:      DRAFT,
+			},
+			*draft,
+		}, nil)
+	suite.dbServiceMock.
+		On("FindDocument", mock.Anything, "test-sample").
+		Return(draft, nil)
+
+	ctx, recorder := suite.testContext(
+		http.MethodPut,
+		"/samples/test-sample",
+		`{
+			"patientName": "Juraj Prvy",
+			"patientId": "P-1002",
+			"sampleCode": "SMP-TEST-001",
+			"collectedAt": "2026-05-07T09:05:00Z",
+			"testTypes": ["glucose"]
+		}`,
+		gin.Param{Key: "sampleId", Value: "test-sample"},
+	)
+	sut := implSamplesAPI{}
+
+	// ACT
+	sut.UpdateSample(ctx)
+
+	// ASSERT
+	suite.Equal(http.StatusConflict, recorder.Code)
+	suite.Contains(recorder.Body.String(), "Patient identifier already belongs to Eva Novakova")
+	suite.dbServiceMock.AssertNotCalled(suite.T(), "UpdateDocument", mock.Anything, mock.Anything, mock.Anything)
+}
+
 func (suite *SampleAndDiagnosisSuite) testContext(method string, target string, body string, params ...gin.Param) (*gin.Context, *httptest.ResponseRecorder) {
 	recorder := httptest.NewRecorder()
 	ctx, _ := gin.CreateTestContext(recorder)

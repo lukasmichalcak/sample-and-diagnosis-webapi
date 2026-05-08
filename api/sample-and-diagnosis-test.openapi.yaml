@@ -124,7 +124,7 @@ paths:
         "400":
           description: Missing mandatory properties or invalid test type.
         "409":
-          description: Sample code already exists.
+          description: Sample code already exists or patient identifier belongs to another patient name.
 
   /samples/{sampleId}:
     parameters:
@@ -174,7 +174,7 @@ paths:
         "404":
           description: Sample does not exist.
         "409":
-          description: Sample is no longer editable by the technician or sample code is duplicated.
+          description: Sample is no longer editable by the technician, sample code is duplicated, or patient identifier belongs to another patient name.
     delete:
       tags:
         - samples

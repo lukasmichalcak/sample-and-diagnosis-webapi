@@ -387,6 +387,30 @@ func sampleCodeExists(samples []Sample, sampleCode string, exceptSampleId string
 	return false
 }
 
+func patientIdentifierNameConflict(samples []Sample, patientId string, patientName string, exceptSampleId string) (string, bool) {
+	normalizedPatientId := strings.TrimSpace(patientId)
+	normalizedPatientName := normalizePatientName(patientName)
+	if normalizedPatientId == "" || normalizedPatientName == "" {
+		return "", false
+	}
+
+	for _, sample := range samples {
+		if sample.Id == exceptSampleId {
+			continue
+		}
+		if strings.TrimSpace(sample.PatientId) == normalizedPatientId &&
+			normalizePatientName(sample.PatientName) != normalizedPatientName {
+			return strings.TrimSpace(sample.PatientName), true
+		}
+	}
+
+	return "", false
+}
+
+func normalizePatientName(value string) string {
+	return strings.ToLower(strings.Join(strings.Fields(value), " "))
+}
+
 func sortSamplesNewestFirst(samples []Sample) {
 	sort.SliceStable(samples, func(i, j int) bool {
 		left := samples[i].UpdatedAt
